@@ -222,11 +222,11 @@ export default function AdminPage() {
                     </form>
 
                     {/* Hint */}
-                    <div className="mt-6 pt-6 border-t border-gray-100">
+                    {/* <div className="mt-6 pt-6 border-t border-gray-100">
                         <p className="text-xs text-gray-400 text-center">
                             Demo credentials: <span className="text-gray-600 font-medium">admin</span> / <span className="text-gray-600 font-medium">admin123</span>
                         </p>
-                    </div>
+                    </div> */}
                 </div>
             </motion.div>
         </div>
