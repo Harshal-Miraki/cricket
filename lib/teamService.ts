@@ -6,6 +6,7 @@ import {
     updateDoc,
     query,
     orderBy,
+    where,
     Timestamp,
     DocumentData
 } from "firebase/firestore";
@@ -26,12 +27,39 @@ export interface TeamData {
 
 const TEAMS_COLLECTION = "teams";
 
+
+// Get the number of teams registered today
+export async function getDailyTeamCount(): Promise<number> {
+    try {
+        const now = new Date();
+        const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const startOfDayTimestamp = Timestamp.fromDate(startOfDay);
+
+        const q = query(
+            collection(db, TEAMS_COLLECTION),
+            where("registeredAt", ">=", startOfDayTimestamp)
+        );
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.size;
+    } catch (error) {
+        console.error("Error getting daily team count:", error);
+        return 0; // Return 0 on error to avoid blocking, or throw if critical
+    }
+}
+
 // Add a new team registration
 export async function addTeam(teamData: Omit<TeamData, 'id' | 'status' | 'registeredAt'>): Promise<string> {
     console.log("addTeam called with:", teamData);
     console.log("Firestore db instance:", db);
 
     try {
+        const todayCount = await getDailyTeamCount();
+        console.log(`Teams registered today: ${todayCount}`);
+
+        if (todayCount >= 4) {
+            throw new Error("Daily limit of 4 teams reached. Please try again tomorrow.");
+        }
+
         console.log("Creating document in collection:", TEAMS_COLLECTION);
         const docData = {
             ...teamData,

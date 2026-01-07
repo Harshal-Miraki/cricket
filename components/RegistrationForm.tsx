@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Image as ImageIcon, Send, CheckCircle2, Loader2 } from "lucide-react";
+import { Image as ImageIcon, Send, CheckCircle2, Loader2, Clock } from "lucide-react";
 import Image from "next/image";
-import { addTeam } from "@/lib/teamService";
+import { addTeam, getDailyTeamCount } from "@/lib/teamService";
 import { getImagePreview, imagekitConfig } from "@/lib/imagekit";
 import { IKContext, IKUpload } from "imagekitio-react";
 
@@ -25,6 +25,28 @@ export default function RegistrationForm() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const [isLimitReached, setIsLimitReached] = useState(false);
+    const [checkingLimit, setCheckingLimit] = useState(true);
+
+    const checkLimit = async () => {
+        setCheckingLimit(true);
+        try {
+            const count = await getDailyTeamCount();
+            if (count >= 4) {
+                setIsLimitReached(true);
+            } else {
+                setIsLimitReached(false);
+            }
+        } catch (error) {
+            console.error("Failed to check team limit", error);
+        } finally {
+            setCheckingLimit(false);
+        }
+    };
+
+    useEffect(() => {
+        checkLimit();
+    }, []);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target;
@@ -174,7 +196,12 @@ export default function RegistrationForm() {
             // Open WhatsApp in new tab
             window.open(whatsappUrl, '_blank');
 
+            window.open(whatsappUrl, '_blank');
+
             setIsSubmitted(true);
+
+            // Re-check limit after successful submission
+            checkLimit();
         } catch (error) {
             console.error("Registration error:", error);
             const errorMessage = error instanceof Error ? error.message : "Unknown error";
@@ -198,7 +225,42 @@ export default function RegistrationForm() {
         setUploadedImageUrl(null);
         setIsSubmitted(false);
         setErrors({});
+        checkLimit(); // Re-check limit on reset
     };
+
+    if (checkingLimit) {
+        return (
+            <section className="py-24 bg-white flex justify-center items-center min-h-[600px]">
+                <Loader2 size={48} className="text-blue-600 animate-spin" />
+            </section>
+        );
+    }
+
+    if (isLimitReached) {
+        return (
+            <section id="register" className="py-24 bg-white">
+                <div className="container mx-auto px-4 text-center">
+                    <motion.div
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        className="max-w-md mx-auto p-12 bg-amber-50 rounded-3xl border border-amber-100 shadow-xl"
+                    >
+                        <div className="w-20 h-20 bg-amber-600 rounded-full flex items-center justify-center mx-auto mb-6 transform scale-110 shadow-lg shadow-amber-200">
+                            <Clock className="w-10 h-10 text-white" />
+                        </div>
+                        <h2 className="text-3xl font-bold text-amber-900 mb-4">Registration Limit Reached</h2>
+                        <p className="text-amber-800/80 mb-6 leading-relaxed">
+                            The daily limit of 4 teams has been reached for today. Registration will reopen tomorrow at midnight.
+                        </p>
+
+                        <div className="w-full py-4 bg-white border-2 border-amber-100 text-amber-600 font-bold rounded-xl flex items-center justify-center gap-2">
+                            Please check back tomorrow!
+                        </div>
+                    </motion.div>
+                </div>
+            </section>
+        );
+    }
 
     if (isSubmitted) {
         // Reconstruct message for the success view button (in case pop-up was blocked)
